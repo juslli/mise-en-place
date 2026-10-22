@@ -22,6 +22,8 @@ form {
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
 }
 
+form h2 { margin-top: 0; }
+
 input, textarea {
   padding: 10px;
   border: 1px solid #ddd;
@@ -40,6 +42,11 @@ button {
 }
 
 button:hover { background: #3a78c2; }
+
+button[hidden] { display: none; }
+
+.cancel { background: #999; }
+.cancel:hover { background: #777; }
 
 .grid {
   display: grid;
@@ -69,13 +76,21 @@ button:hover { background: #3a78c2; }
 .card-body h3 { margin-bottom: 6px; }
 .card-body small { color: #777; }
 
-.delete {
-  margin-top: 8px;
-  background: #e25555;
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.card-actions button {
   padding: 6px 10px;
   font-size: .8rem;
 }
 
+.edit { background: #f0a500; }
+.edit:hover { background: #d18f00; }
+
+.delete { background: #e25555; }
 .delete:hover { background: #c94444; }
 
 /* Modal de detalhe */

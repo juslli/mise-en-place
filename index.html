@@ -13,12 +13,13 @@
 
   <main>
     <form id="recipe-form">
-      <h2>Nova receita</h2>
+      <h2 id="form-title">Nova receita</h2>
       <input type="text" id="name" placeholder="Nome da receita" required>
       <input type="url" id="image" placeholder="Link da foto (opcional)">
       <textarea id="ingredients" placeholder="Ingredientes (um por linha)" rows="4" required></textarea>
       <textarea id="steps" placeholder="Modo de preparo" rows="4" required></textarea>
-      <button type="submit">Salvar receita</button>
+      <button type="submit" id="submit-btn">Salvar receita</button>
+      <button type="button" id="cancel-btn" class="cancel" hidden>Cancelar edição</button>
     </form>
 
     <section>

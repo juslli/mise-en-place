@@ -1,7 +1,11 @@
 const form = document.getElementById('recipe-form');
 const list = document.getElementById('recipe-list');
+const formTitle = document.getElementById('form-title');
+const submitBtn = document.getElementById('submit-btn');
+const cancelBtn = document.getElementById('cancel-btn');
 
 let recipes = JSON.parse(localStorage.getItem('recipes')) || [];
+let editingIndex = null;
 
 function save() {
   localStorage.setItem('recipes', JSON.stringify(recipes));
@@ -10,10 +14,11 @@ function save() {
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;');
 }
 
-// Cria o modal (janela de detalhe) uma vez só
+/* ---------- Modal de detalhe ---------- */
+
 const modal = document.createElement('div');
 modal.className = 'modal hidden';
 modal.innerHTML = '<div class="modal-content"><button class="modal-close" aria-label="Fechar">✕</button><div id="modal-body"></div></div>';
@@ -44,6 +49,58 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeModal();
 });
 
+/* ---------- Formulário (criar e editar) ---------- */
+
+function resetForm() {
+  form.reset();
+  editingIndex = null;
+  formTitle.textContent = 'Nova receita';
+  submitBtn.textContent = 'Salvar receita';
+  cancelBtn.hidden = true;
+}
+
+function startEdit(index) {
+  const recipe = recipes[index];
+  editingIndex = index;
+
+  document.getElementById('name').value = recipe.name;
+  document.getElementById('image').value = recipe.image || '';
+  document.getElementById('ingredients').value = recipe.ingredients.join('\n');
+  document.getElementById('steps').value = recipe.steps;
+
+  formTitle.textContent = 'Editar receita';
+  submitBtn.textContent = 'Salvar alterações';
+  cancelBtn.hidden = false;
+
+  form.scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('name').focus();
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const recipe = {
+    name: document.getElementById('name').value,
+    image: document.getElementById('image').value,
+    ingredients: document.getElementById('ingredients').value.split('\n').filter(Boolean),
+    steps: document.getElementById('steps').value
+  };
+
+  if (editingIndex === null) {
+    recipes.push(recipe);
+  } else {
+    recipes[editingIndex] = recipe;
+  }
+
+  save();
+  render();
+  resetForm();
+});
+
+cancelBtn.addEventListener('click', resetForm);
+
+/* ---------- Lista de receitas ---------- */
+
 function render() {
   list.innerHTML = '';
 
@@ -60,29 +117,16 @@ function render() {
       ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}">` : '<img alt="">'}
       <div class="card-body">
         <h3>${escapeHtml(recipe.name)}</h3>
-        <small>${recipe.ingredients.length} ingredientes</small><br>
-        <button class="delete" data-index="${index}">Excluir</button>
+        <small>${recipe.ingredients.length} ingredientes</small>
+        <div class="card-actions">
+          <button class="edit" data-index="${index}">Editar</button>
+          <button class="delete" data-index="${index}">Excluir</button>
+        </div>
       </div>
     `;
     list.appendChild(card);
   });
 }
-
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-
-  const recipe = {
-    name: document.getElementById('name').value,
-    image: document.getElementById('image').value,
-    ingredients: document.getElementById('ingredients').value.split('\n').filter(Boolean),
-    steps: document.getElementById('steps').value
-  };
-
-  recipes.push(recipe);
-  save();
-  render();
-  form.reset();
-});
 
 list.addEventListener('click', (e) => {
   // Excluir
@@ -91,7 +135,14 @@ list.addEventListener('click', (e) => {
       recipes.splice(e.target.dataset.index, 1);
       save();
       render();
+      resetForm();
     }
+    return;
+  }
+
+  // Editar
+  if (e.target.classList.contains('edit')) {
+    startEdit(Number(e.target.dataset.index));
     return;
   }
 
