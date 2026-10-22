@@ -31,6 +31,12 @@ input, textarea {
   font: inherit;
 }
 
+.search {
+  width: 100%;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
 button {
   padding: 12px;
   border: none;

@@ -3,6 +3,7 @@ const list = document.getElementById('recipe-list');
 const formTitle = document.getElementById('form-title');
 const submitBtn = document.getElementById('submit-btn');
 const cancelBtn = document.getElementById('cancel-btn');
+const searchInput = document.getElementById('search');
 
 let recipes = JSON.parse(localStorage.getItem('recipes')) || [];
 let editingIndex = null;
@@ -99,6 +100,16 @@ form.addEventListener('submit', (e) => {
 
 cancelBtn.addEventListener('click', resetForm);
 
+/* ---------- Busca ---------- */
+
+function matchesSearch(recipe, term) {
+  if (!term) return true;
+  const text = (recipe.name + ' ' + recipe.ingredients.join(' ')).toLowerCase();
+  return text.includes(term);
+}
+
+searchInput.addEventListener('input', render);
+
 /* ---------- Lista de receitas ---------- */
 
 function render() {
@@ -109,7 +120,13 @@ function render() {
     return;
   }
 
+  const term = searchInput.value.trim().toLowerCase();
+  let shown = 0;
+
   recipes.forEach((recipe, index) => {
+    if (!matchesSearch(recipe, term)) return;
+    shown++;
+
     const card = document.createElement('article');
     card.className = 'card';
     card.dataset.index = index;
@@ -126,6 +143,10 @@ function render() {
     `;
     list.appendChild(card);
   });
+
+  if (shown === 0) {
+    list.innerHTML = '<p>Nenhuma receita encontrada. 🔎</p>';
+  }
 }
 
 list.addEventListener('click', (e) => {
