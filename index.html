@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mise en Place</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🍳 Minhas Receitas</h1>
+  </header>
+
+  <main>
+    <form id="recipe-form">
+      <h2>Nova receita</h2>
+      <input type="text" id="name" placeholder="Nome da receita" required>
+      <input type="url" id="image" placeholder="Link da foto (opcional)">
+      <textarea id="ingredients" placeholder="Ingredientes (um por linha)" rows="4" required></textarea>
+      <textarea id="steps" placeholder="Modo de preparo" rows="4" required></textarea>
+      <button type="submit">Salvar receita</button>
+    </form>
+
+    <section>
+      <h2>Receitas salvas</h2>
+      <div id="recipe-list" class="grid"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
