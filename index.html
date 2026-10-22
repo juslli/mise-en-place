@@ -1,133 +1,134 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Mise en Place</title>
-  <meta name="theme-color" content="#f7f2e8">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Receitas">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="app">
-    <header class="appbar">
-      <button type="button" id="back-btn" class="round-btn" aria-label="Voltar" hidden>←</button>
-      <div class="appbar-title">
-        <span class="wordmark">Mise en Place</span>
-        <h1 id="screen-title">Coleções</h1>
-      </div>
-      <button type="button" id="sort-btn" class="pill" hidden>⇅ Recentes</button>
-    </header>
-
-    <main id="screen">
-      <section id="view-collections">
-        <p class="hero">Todas as suas receitas <em>num só lugar</em></p>
-        <div id="tiles" class="tiles"></div>
-      </section>
-
-      <section id="view-recipes" hidden>
-        <input type="search" id="search" class="search" placeholder="Buscar receitas ou ingredientes">
-        <p id="count" class="count"></p>
-        <div id="recipe-list" class="rgrid"></div>
-      </section>
-    </main>
-  </div>
-
-  <nav class="tabbar">
-    <button type="button" class="tab active" data-tab="collections">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
-      <span>Coleções</span>
-    </button>
-    <button type="button" class="tab" data-tab="recipes">
-      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      <span>Receitas</span>
-    </button>
-    <button type="button" id="fab" class="tab-add" aria-label="Nova receita">+</button>
-    <button type="button" class="tab" data-tab="search">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <span>Buscar</span>
-    </button>
-    <button type="button" class="tab" data-tab="more">
-      <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-      <span>Mais</span>
-    </button>
-  </nav>
-
-  <!-- Formulário -->
-  <div id="form-sheet" class="sheet hidden">
-    <div class="sheet-content">
-      <form id="recipe-form">
-        <h2 id="form-title">Nova receita</h2>
-        <label>Nome
-          <input type="text" id="name" placeholder="Ex.: Pão de queijo" required>
-        </label>
-        <label>Coleção (opcional)
-          <input type="text" id="category" list="category-list" placeholder="Ex.: Pães, Massas, Doces" maxlength="30">
-          <datalist id="category-list"></datalist>
-        </label>
-        <label>Link da foto (opcional)
-          <input type="url" id="image" placeholder="https://...">
-        </label>
-        <label>Ingredientes (um por linha)
-          <textarea id="ingredients" rows="4" placeholder="500g de polvilho&#10;2 ovos&#10;200g de queijo" required></textarea>
-        </label>
-        <label>Modo de preparo (um passo por linha)
-          <textarea id="steps" rows="5" placeholder="Misture os ingredientes&#10;Faça bolinhas&#10;Asse por 25 minutos" required></textarea>
-        </label>
-        <div class="form-actions">
-          <button type="button" id="cancel-btn" class="btn btn-ghost">Cancelar</button>
-          <button type="submit" id="submit-btn" class="btn btn-primary">Salvar receita</button>
+  <!DOCTYPE html>
+  <html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mise en Place</title>
+    <meta name="theme-color" content="#f7f2e8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Receitas">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="premium.css">
+  </head>
+  <body>
+    <div class="app">
+      <header class="appbar">
+        <button type="button" id="back-btn" class="round-btn" aria-label="Voltar" hidden>←</button>
+        <div class="appbar-title">
+          <span class="wordmark">Mise en Place</span>
+          <h1 id="screen-title">Coleções</h1>
         </div>
-      </form>
+        <button type="button" id="sort-btn" class="pill" hidden>⇅ Recentes</button>
+      </header>
+
+      <main id="screen">
+        <section id="view-collections">
+          <p class="hero">Todas as suas receitas <em>num só lugar</em></p>
+          <div id="tiles" class="tiles"></div>
+        </section>
+
+        <section id="view-recipes" hidden>
+          <input type="search" id="search" class="search" placeholder="Buscar receitas ou ingredientes">
+          <p id="count" class="count"></p>
+          <div id="recipe-list" class="rgrid"></div>
+        </section>
+      </main>
     </div>
-  </div>
 
-  <!-- Detalhe da receita -->
-  <div id="detail-sheet" class="sheet hidden">
-    <div class="sheet-content detail">
-      <div id="detail-media" class="detail-media">
-        <span class="emoji">🍽️</span>
-        <img id="detail-img" alt="" hidden>
-        <button type="button" id="detail-close" class="round-btn floating" aria-label="Fechar">✕</button>
-      </div>
-      <div class="detail-body">
-        <span id="detail-tag" class="tag" hidden></span>
-        <h2 id="detail-title"></h2>
-        <div class="seg">
-          <button type="button" class="seg-btn active" data-seg="ingredients">Ingredientes</button>
-          <button type="button" class="seg-btn" data-seg="steps">Preparo</button>
-        </div>
-        <ul id="detail-ingredients" class="checklist"></ul>
-        <ol id="detail-steps" class="steps-list" hidden></ol>
-        <div class="detail-actions">
-          <button type="button" id="detail-edit" class="btn btn-outline">✏️ Editar</button>
-          <button type="button" id="detail-delete" class="btn btn-danger">🗑️ Excluir</button>
-        </div>
+    <nav class="tabbar">
+      <button type="button" class="tab active" data-tab="collections">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>
+        <span>Coleções</span>
+      </button>
+      <button type="button" class="tab" data-tab="recipes">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Receitas</span>
+      </button>
+      <button type="button" id="fab" class="tab-add" aria-label="Nova receita">+</button>
+      <button type="button" class="tab" data-tab="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <span>Buscar</span>
+      </button>
+      <button type="button" class="tab" data-tab="more">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+        <span>Mais</span>
+      </button>
+    </nav>
+
+    <!-- Formulário -->
+    <div id="form-sheet" class="sheet hidden">
+      <div class="sheet-content">
+        <form id="recipe-form">
+          <h2 id="form-title">Nova receita</h2>
+          <label>Nome
+            <input type="text" id="name" placeholder="Ex.: Pão de queijo" required>
+          </label>
+          <label>Coleção (opcional)
+            <input type="text" id="category" list="category-list" placeholder="Ex.: Pães, Massas, Doces" maxlength="30">
+            <datalist id="category-list"></datalist>
+          </label>
+          <label>Link da foto (opcional)
+            <input type="url" id="image" placeholder="https://...">
+          </label>
+          <label>Ingredientes (um por linha)
+            <textarea id="ingredients" rows="4" placeholder="500g de polvilho&#10;2 ovos&#10;200g de queijo" required></textarea>
+          </label>
+          <label>Modo de preparo (um passo por linha)
+            <textarea id="steps" rows="5" placeholder="Misture os ingredientes&#10;Faça bolinhas&#10;Asse por 25 minutos" required></textarea>
+          </label>
+          <div class="form-actions">
+            <button type="button" id="cancel-btn" class="btn btn-ghost">Cancelar</button>
+            <button type="submit" id="submit-btn" class="btn btn-primary">Salvar receita</button>
+          </div>
+        </form>
       </div>
     </div>
-  </div>
 
-  <!-- Mais (backup) -->
-  <div id="more-sheet" class="sheet hidden">
-    <div class="sheet-content">
-      <h2 class="sheet-title">Mais</h2>
-      <div class="more-card">
-        <h3>Backup das receitas</h3>
-        <p>Suas receitas ficam salvas neste aparelho. Exporte um arquivo para guardar ou levar para outro aparelho.</p>
-        <div class="backup-actions">
-          <button type="button" id="export-btn" class="btn btn-outline">⬇️ Exportar</button>
-          <button type="button" id="import-btn" class="btn btn-outline">⬆️ Importar</button>
-          <input type="file" id="import-file" accept="application/json,.json" hidden>
+    <!-- Detalhe da receita -->
+    <div id="detail-sheet" class="sheet hidden">
+      <div class="sheet-content detail">
+        <div id="detail-media" class="detail-media">
+          <span class="emoji">🍽️</span>
+          <img id="detail-img" alt="" hidden>
+          <button type="button" id="detail-close" class="round-btn floating" aria-label="Fechar">✕</button>
+        </div>
+        <div class="detail-body">
+          <span id="detail-tag" class="tag" hidden></span>
+          <h2 id="detail-title"></h2>
+          <div class="seg">
+            <button type="button" class="seg-btn active" data-seg="ingredients">Ingredientes</button>
+            <button type="button" class="seg-btn" data-seg="steps">Preparo</button>
+          </div>
+          <ul id="detail-ingredients" class="checklist"></ul>
+          <ol id="detail-steps" class="steps-list" hidden></ol>
+          <div class="detail-actions">
+            <button type="button" id="detail-edit" class="btn btn-outline">✏️ Editar</button>
+            <button type="button" id="detail-delete" class="btn btn-danger">🗑️ Excluir</button>
+          </div>
         </div>
       </div>
-      <button type="button" id="more-close" class="btn btn-ghost full">Fechar</button>
     </div>
-  </div>
 
-  <script src="app.js"></script>
-</body>
-</html>
+    <!-- Mais (backup) -->
+    <div id="more-sheet" class="sheet hidden">
+      <div class="sheet-content">
+        <h2 class="sheet-title">Mais</h2>
+        <div class="more-card">
+          <h3>Backup das receitas</h3>
+          <p>Suas receitas ficam salvas neste aparelho. Exporte um arquivo para guardar ou levar para outro aparelho.</p>
+          <div class="backup-actions">
+            <button type="button" id="export-btn" class="btn btn-outline">⬇️ Exportar</button>
+            <button type="button" id="import-btn" class="btn btn-outline">⬆️ Importar</button>
+            <input type="file" id="import-file" accept="application/json,.json" hidden>
+          </div>
+        </div>
+        <button type="button" id="more-close" class="btn btn-ghost full">Fechar</button>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+  </html>
