@@ -5,6 +5,8 @@ const submitBtn = document.getElementById('submit-btn');
 const cancelBtn = document.getElementById('cancel-btn');
 const searchInput = document.getElementById('search');
 const countLabel = document.getElementById('count');
+const chips = document.getElementById('chips');
+const categoryList = document.getElementById('category-list');
 const fab = document.getElementById('fab');
 const sheet = document.getElementById('form-sheet');
 const exportBtn = document.getElementById('export-btn');
@@ -13,6 +15,7 @@ const importFile = document.getElementById('import-file');
 
 let recipes = JSON.parse(localStorage.getItem('recipes')) || [];
 let editingIndex = null;
+let activeCategory = 'Todas';
 
 function save() {
   localStorage.setItem('recipes', JSON.stringify(recipes));
@@ -54,6 +57,7 @@ function openModal(recipe) {
       ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}" onerror="this.style.display='none'">` : ''}
     </div>
     <div class="detail-body">
+      ${recipe.category ? `<span class="tag">${escapeHtml(recipe.category)}</span>` : ''}
       <h2>${escapeHtml(recipe.name)}</h2>
       <h3>Ingredientes</h3>
       <ul>${recipe.ingredients.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
@@ -85,6 +89,53 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+/* ---------- Coleções ---------- */
+
+function getCategories() {
+  const set = new Set();
+  recipes.forEach((r) => { if (r.category) set.add(r.category); });
+  return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function renderCategoryList() {
+  categoryList.innerHTML = '';
+  getCategories().forEach((cat) => {
+    const option = document.createElement('option');
+    option.value = cat;
+    categoryList.appendChild(option);
+  });
+}
+
+function makeChip(label, value) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'chip' + (activeCategory === value ? ' active' : '');
+  btn.dataset.cat = value;
+  btn.textContent = label;
+  return btn;
+}
+
+function renderChips() {
+  const cats = getCategories();
+
+  if (activeCategory !== 'Todas' && !cats.includes(activeCategory)) {
+    activeCategory = 'Todas';
+  }
+
+  chips.innerHTML = '';
+  if (cats.length === 0) return;
+
+  chips.appendChild(makeChip('Todas', 'Todas'));
+  cats.forEach((cat) => chips.appendChild(makeChip(cat, cat)));
+}
+
+chips.addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  activeCategory = chip.dataset.cat;
+  render();
+});
+
 /* ---------- Formulário (criar e editar) ---------- */
 
 function resetForm() {
@@ -105,6 +156,7 @@ function startEdit(index) {
   editingIndex = index;
 
   document.getElementById('name').value = recipe.name;
+  document.getElementById('category').value = recipe.category || '';
   document.getElementById('image').value = recipe.image || '';
   document.getElementById('ingredients').value = recipe.ingredients.join('\n');
   document.getElementById('steps').value = recipe.steps;
@@ -116,6 +168,10 @@ function startEdit(index) {
 
 fab.addEventListener('click', () => {
   resetForm();
+  // Já abre com a coleção que está filtrada, pra agilizar
+  if (activeCategory !== 'Todas') {
+    document.getElementById('category').value = activeCategory;
+  }
   openSheet();
 });
 
@@ -126,6 +182,7 @@ form.addEventListener('submit', (e) => {
 
   const recipe = {
     name: document.getElementById('name').value.trim(),
+    category: document.getElementById('category').value.trim(),
     image: document.getElementById('image').value.trim(),
     ingredients: document.getElementById('ingredients').value.split('\n').map(i => i.trim()).filter(Boolean),
     steps: document.getElementById('steps').value.trim()
@@ -147,8 +204,12 @@ form.addEventListener('submit', (e) => {
 
 function matchesSearch(recipe, term) {
   if (!term) return true;
-  const text = (recipe.name + ' ' + recipe.ingredients.join(' ')).toLowerCase();
+  const text = (recipe.name + ' ' + recipe.ingredients.join(' ') + ' ' + (recipe.category || '')).toLowerCase();
   return text.includes(term);
+}
+
+function matchesCategory(recipe) {
+  return activeCategory === 'Todas' || recipe.category === activeCategory;
 }
 
 searchInput.addEventListener('input', render);
@@ -182,6 +243,7 @@ function isValidRecipe(r) {
 function cleanRecipe(r) {
   return {
     name: r.name,
+    category: typeof r.category === 'string' ? r.category : '',
     image: typeof r.image === 'string' ? r.image : '',
     ingredients: r.ingredients.map(String),
     steps: r.steps
@@ -224,11 +286,12 @@ importFile.addEventListener('change', () => {
 /* ---------- Lista de receitas ---------- */
 
 function render() {
+  renderChips();
+  renderCategoryList();
   list.innerHTML = '';
 
-  countLabel.textContent = recipes.length === 1 ? '1 receita' : `${recipes.length} receitas`;
-
   if (recipes.length === 0) {
+    countLabel.textContent = '0 receitas';
     list.innerHTML = `
       <div class="empty">
         <span class="big">🍳</span>
@@ -243,7 +306,7 @@ function render() {
   let shown = 0;
 
   recipes.forEach((recipe, index) => {
-    if (!matchesSearch(recipe, term)) return;
+    if (!matchesSearch(recipe, term) || !matchesCategory(recipe)) return;
     shown++;
 
     const card = document.createElement('article');
@@ -258,12 +321,15 @@ function render() {
         </div>
       </div>
       <div class="card-body">
+        ${recipe.category ? `<span class="tag">${escapeHtml(recipe.category)}</span><br>` : ''}
         <h3>${escapeHtml(recipe.name)}</h3>
         <small>${recipe.ingredients.length} ingredientes</small>
       </div>
     `;
     list.appendChild(card);
   });
+
+  countLabel.textContent = shown === 1 ? '1 receita' : `${shown} receitas`;
 
   if (shown === 0) {
     list.innerHTML = '<div class="empty"><span class="big">🔎</span><p>Nenhuma receita encontrada.</p></div>';

@@ -27,6 +27,8 @@
   </header>
 
   <main class="container">
+    <div id="chips" class="chips"></div>
+
     <div class="section-head">
       <h2>Minhas receitas</h2>
       <span id="count" class="count"></span>
@@ -53,6 +55,10 @@
         <h2 id="form-title">Nova receita</h2>
         <label>Nome
           <input type="text" id="name" placeholder="Ex.: Pão de queijo" required>
+        </label>
+        <label>Coleção (opcional)
+          <input type="text" id="category" list="category-list" placeholder="Ex.: Pães, Massas, Doces" maxlength="30">
+          <datalist id="category-list"></datalist>
         </label>
         <label>Link da foto (opcional)
           <input type="url" id="image" placeholder="https://...">

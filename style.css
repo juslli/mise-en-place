@@ -85,12 +85,55 @@ button[hidden] { display: none; }
   box-shadow: 0 0 0 3px rgba(74, 144, 226, .18);
 }
 
+/* ---------- Coleções (chips) ---------- */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 16px 0 4px;
+  scrollbar-width: none;
+}
+
+.chips::-webkit-scrollbar { display: none; }
+.chips:empty { display: none; }
+
+.chip {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  font-size: .9rem;
+  font-weight: 600;
+  transition: background .15s, color .15s;
+}
+
+.chip:hover { background: #f3efe3; }
+
+.chip.active {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  margin-bottom: 6px;
+  border-radius: 999px;
+  background: #fff3bf;
+  color: #7a5b00;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
 /* ---------- Lista ---------- */
 .section-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 24px 0 14px;
+  margin: 20px 0 14px;
 }
 
 .section-head h2 {
