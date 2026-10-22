@@ -244,3 +244,11 @@ list.addEventListener('click', (e) => {
 });
 
 render();
+
+/* ---------- PWA: registrar o service worker ---------- */
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
