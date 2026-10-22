@@ -4,6 +4,9 @@ const formTitle = document.getElementById('form-title');
 const submitBtn = document.getElementById('submit-btn');
 const cancelBtn = document.getElementById('cancel-btn');
 const searchInput = document.getElementById('search');
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const importFile = document.getElementById('import-file');
 
 let recipes = JSON.parse(localStorage.getItem('recipes')) || [];
 let editingIndex = null;
@@ -109,6 +112,74 @@ function matchesSearch(recipe, term) {
 }
 
 searchInput.addEventListener('input', render);
+
+/* ---------- Backup (exportar e importar) ---------- */
+
+function exportRecipes() {
+  if (recipes.length === 0) {
+    alert('Você ainda não tem receitas para exportar.');
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(recipes, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'receitas-backup.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function isValidRecipe(r) {
+  return r
+    && typeof r.name === 'string'
+    && Array.isArray(r.ingredients)
+    && typeof r.steps === 'string';
+}
+
+function cleanRecipe(r) {
+  return {
+    name: r.name,
+    image: typeof r.image === 'string' ? r.image : '',
+    ingredients: r.ingredients.map(String),
+    steps: r.steps
+  };
+}
+
+exportBtn.addEventListener('click', exportRecipes);
+
+importBtn.addEventListener('click', () => importFile.click());
+
+importFile.addEventListener('change', () => {
+  const file = importFile.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error('formato inválido');
+
+      const valid = data.filter(isValidRecipe).map(cleanRecipe);
+      if (valid.length === 0) throw new Error('nenhuma receita válida');
+
+      if (confirm(`Importar ${valid.length} receita(s)? Elas serão adicionadas às que você já tem.`)) {
+        recipes = recipes.concat(valid);
+        save();
+        render();
+      }
+    } catch (err) {
+      alert('Arquivo inválido. Use um arquivo gerado pelo botão Exportar.');
+    }
+
+    importFile.value = '';
+  };
+
+  reader.readAsText(file);
+});
 
 /* ---------- Lista de receitas ---------- */
 

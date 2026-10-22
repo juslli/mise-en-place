@@ -27,6 +27,16 @@
       <input type="search" id="search" class="search" placeholder="🔍 Buscar por nome ou ingrediente">
       <div id="recipe-list" class="grid"></div>
     </section>
+
+    <section class="backup">
+      <h2>Backup</h2>
+      <p>Suas receitas ficam salvas neste aparelho. Exporte um arquivo para guardar ou levar para outro aparelho.</p>
+      <div class="backup-actions">
+        <button type="button" id="export-btn">⬇️ Exportar receitas</button>
+        <button type="button" id="import-btn" class="secondary">⬆️ Importar receitas</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
+    </section>
   </main>
 
   <script src="app.js"></script>

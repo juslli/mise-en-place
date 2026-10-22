@@ -99,6 +99,27 @@ button[hidden] { display: none; }
 .delete { background: #e25555; }
 .delete:hover { background: #c94444; }
 
+/* Backup */
+.backup {
+  margin-top: 32px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.backup h2 { margin-top: 0; }
+.backup p { color: #555; margin-bottom: 12px; }
+
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.secondary { background: #6c757d; }
+.secondary:hover { background: #565e64; }
+
 /* Modal de detalhe */
 .modal {
   position: fixed;
