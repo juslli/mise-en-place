@@ -2,9 +2,9 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Mise en Place</title>
-  <meta name="theme-color" content="#4a90e2">
+  <meta name="theme-color" content="#faf6ee">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Receitas">
   <link rel="manifest" href="manifest.json">
@@ -13,37 +13,63 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>🍳 Minhas Receitas</h1>
+  <header class="topbar">
+    <div class="container">
+      <div class="brand">
+        <img src="icons/icon-192.png" alt="" class="logo">
+        <div>
+          <h1>Mise en Place</h1>
+          <p>Todas as suas receitas num só lugar</p>
+        </div>
+      </div>
+      <input type="search" id="search" class="search" placeholder="🔍  Buscar por nome ou ingrediente">
+    </div>
   </header>
 
-  <main>
-    <form id="recipe-form">
-      <h2 id="form-title">Nova receita</h2>
-      <input type="text" id="name" placeholder="Nome da receita" required>
-      <input type="url" id="image" placeholder="Link da foto (opcional)">
-      <textarea id="ingredients" placeholder="Ingredientes (um por linha)" rows="4" required></textarea>
-      <textarea id="steps" placeholder="Modo de preparo" rows="4" required></textarea>
-      <button type="submit" id="submit-btn">Salvar receita</button>
-      <button type="button" id="cancel-btn" class="cancel" hidden>Cancelar edição</button>
-    </form>
+  <main class="container">
+    <div class="section-head">
+      <h2>Minhas receitas</h2>
+      <span id="count" class="count"></span>
+    </div>
 
-    <section>
-      <h2>Receitas salvas</h2>
-      <input type="search" id="search" class="search" placeholder="🔍 Buscar por nome ou ingrediente">
-      <div id="recipe-list" class="grid"></div>
-    </section>
+    <div id="recipe-list" class="grid"></div>
 
     <section class="backup">
-      <h2>Backup</h2>
+      <h3>Backup</h3>
       <p>Suas receitas ficam salvas neste aparelho. Exporte um arquivo para guardar ou levar para outro aparelho.</p>
       <div class="backup-actions">
-        <button type="button" id="export-btn">⬇️ Exportar receitas</button>
-        <button type="button" id="import-btn" class="secondary">⬆️ Importar receitas</button>
+        <button type="button" id="export-btn" class="btn btn-outline">⬇️ Exportar</button>
+        <button type="button" id="import-btn" class="btn btn-outline">⬆️ Importar</button>
         <input type="file" id="import-file" accept="application/json,.json" hidden>
       </div>
     </section>
   </main>
+
+  <button type="button" id="fab" class="fab" aria-label="Nova receita">+</button>
+
+  <div id="form-sheet" class="sheet hidden">
+    <div class="sheet-content">
+      <form id="recipe-form">
+        <h2 id="form-title">Nova receita</h2>
+        <label>Nome
+          <input type="text" id="name" placeholder="Ex.: Pão de queijo" required>
+        </label>
+        <label>Link da foto (opcional)
+          <input type="url" id="image" placeholder="https://...">
+        </label>
+        <label>Ingredientes (um por linha)
+          <textarea id="ingredients" rows="4" placeholder="500g de polvilho&#10;2 ovos&#10;200g de queijo" required></textarea>
+        </label>
+        <label>Modo de preparo
+          <textarea id="steps" rows="5" placeholder="Misture tudo e leve ao forno..." required></textarea>
+        </label>
+        <div class="form-actions">
+          <button type="button" id="cancel-btn" class="btn btn-ghost">Cancelar</button>
+          <button type="submit" id="submit-btn" class="btn btn-primary">Salvar receita</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

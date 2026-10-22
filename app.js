@@ -4,6 +4,9 @@ const formTitle = document.getElementById('form-title');
 const submitBtn = document.getElementById('submit-btn');
 const cancelBtn = document.getElementById('cancel-btn');
 const searchInput = document.getElementById('search');
+const countLabel = document.getElementById('count');
+const fab = document.getElementById('fab');
+const sheet = document.getElementById('form-sheet');
 const exportBtn = document.getElementById('export-btn');
 const importBtn = document.getElementById('import-btn');
 const importFile = document.getElementById('import-file');
@@ -21,36 +24,65 @@ function escapeHtml(text) {
   return div.innerHTML.replace(/"/g, '&quot;');
 }
 
-/* ---------- Modal de detalhe ---------- */
+/* ---------- Janelas (abrir e fechar) ---------- */
 
 const modal = document.createElement('div');
 modal.className = 'modal hidden';
 modal.innerHTML = '<div class="modal-content"><button class="modal-close" aria-label="Fechar">✕</button><div id="modal-body"></div></div>';
 document.body.appendChild(modal);
 
+function updateScrollLock() {
+  const open = !sheet.classList.contains('hidden') || !modal.classList.contains('hidden');
+  document.body.classList.toggle('no-scroll', open);
+}
+
+function openSheet() {
+  sheet.classList.remove('hidden');
+  updateScrollLock();
+  document.getElementById('name').focus();
+}
+
+function closeSheet() {
+  sheet.classList.add('hidden');
+  updateScrollLock();
+}
+
 function openModal(recipe) {
   const body = document.getElementById('modal-body');
   body.innerHTML = `
-    ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}">` : ''}
-    <h2>${escapeHtml(recipe.name)}</h2>
-    <h3>Ingredientes</h3>
-    <ul>${recipe.ingredients.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
-    <h3>Modo de preparo</h3>
-    <p class="steps">${escapeHtml(recipe.steps)}</p>
+    <div class="detail-media">
+      ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}" onerror="this.style.display='none'">` : ''}
+    </div>
+    <div class="detail-body">
+      <h2>${escapeHtml(recipe.name)}</h2>
+      <h3>Ingredientes</h3>
+      <ul>${recipe.ingredients.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
+      <h3>Modo de preparo</h3>
+      <p class="steps">${escapeHtml(recipe.steps)}</p>
+    </div>
   `;
   modal.classList.remove('hidden');
+  updateScrollLock();
 }
 
 function closeModal() {
   modal.classList.add('hidden');
+  updateScrollLock();
 }
 
 modal.addEventListener('click', (e) => {
   if (e.target === modal || e.target.classList.contains('modal-close')) closeModal();
 });
 
+sheet.addEventListener('click', (e) => {
+  if (e.target === sheet) cancelForm();
+});
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') {
+    closeModal();
+    cancelForm();
+  }
 });
 
 /* ---------- Formulário (criar e editar) ---------- */
@@ -60,7 +92,12 @@ function resetForm() {
   editingIndex = null;
   formTitle.textContent = 'Nova receita';
   submitBtn.textContent = 'Salvar receita';
-  cancelBtn.hidden = true;
+}
+
+function cancelForm() {
+  if (sheet.classList.contains('hidden')) return;
+  resetForm();
+  closeSheet();
 }
 
 function startEdit(index) {
@@ -74,20 +111,24 @@ function startEdit(index) {
 
   formTitle.textContent = 'Editar receita';
   submitBtn.textContent = 'Salvar alterações';
-  cancelBtn.hidden = false;
-
-  form.scrollIntoView({ behavior: 'smooth' });
-  document.getElementById('name').focus();
+  openSheet();
 }
+
+fab.addEventListener('click', () => {
+  resetForm();
+  openSheet();
+});
+
+cancelBtn.addEventListener('click', cancelForm);
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
 
   const recipe = {
-    name: document.getElementById('name').value,
-    image: document.getElementById('image').value,
-    ingredients: document.getElementById('ingredients').value.split('\n').filter(Boolean),
-    steps: document.getElementById('steps').value
+    name: document.getElementById('name').value.trim(),
+    image: document.getElementById('image').value.trim(),
+    ingredients: document.getElementById('ingredients').value.split('\n').map(i => i.trim()).filter(Boolean),
+    steps: document.getElementById('steps').value.trim()
   };
 
   if (editingIndex === null) {
@@ -99,9 +140,8 @@ form.addEventListener('submit', (e) => {
   save();
   render();
   resetForm();
+  closeSheet();
 });
-
-cancelBtn.addEventListener('click', resetForm);
 
 /* ---------- Busca ---------- */
 
@@ -186,8 +226,16 @@ importFile.addEventListener('change', () => {
 function render() {
   list.innerHTML = '';
 
+  countLabel.textContent = recipes.length === 1 ? '1 receita' : `${recipes.length} receitas`;
+
   if (recipes.length === 0) {
-    list.innerHTML = '<p>Nenhuma receita ainda. Cadastre a primeira! 👆</p>';
+    list.innerHTML = `
+      <div class="empty">
+        <span class="big">🍳</span>
+        <p>Nenhuma receita ainda.<br>Que tal cadastrar a primeira?</p>
+        <button type="button" class="btn btn-primary empty-add">+ Nova receita</button>
+      </div>
+    `;
     return;
   }
 
@@ -202,45 +250,56 @@ function render() {
     card.className = 'card';
     card.dataset.index = index;
     card.innerHTML = `
-      ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}">` : '<img alt="">'}
+      <div class="card-media">
+        ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+        <div class="card-actions">
+          <button class="icon-btn edit" aria-label="Editar">✏️</button>
+          <button class="icon-btn delete" aria-label="Excluir">🗑️</button>
+        </div>
+      </div>
       <div class="card-body">
         <h3>${escapeHtml(recipe.name)}</h3>
         <small>${recipe.ingredients.length} ingredientes</small>
-        <div class="card-actions">
-          <button class="edit" data-index="${index}">Editar</button>
-          <button class="delete" data-index="${index}">Excluir</button>
-        </div>
       </div>
     `;
     list.appendChild(card);
   });
 
   if (shown === 0) {
-    list.innerHTML = '<p>Nenhuma receita encontrada. 🔎</p>';
+    list.innerHTML = '<div class="empty"><span class="big">🔎</span><p>Nenhuma receita encontrada.</p></div>';
   }
 }
 
 list.addEventListener('click', (e) => {
+  // Botão de nova receita (estado vazio)
+  if (e.target.closest('.empty-add')) {
+    resetForm();
+    openSheet();
+    return;
+  }
+
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const index = Number(card.dataset.index);
+
   // Excluir
-  if (e.target.classList.contains('delete')) {
+  if (e.target.closest('.delete')) {
     if (confirm('Excluir essa receita?')) {
-      recipes.splice(e.target.dataset.index, 1);
+      recipes.splice(index, 1);
       save();
       render();
-      resetForm();
     }
     return;
   }
 
   // Editar
-  if (e.target.classList.contains('edit')) {
-    startEdit(Number(e.target.dataset.index));
+  if (e.target.closest('.edit')) {
+    startEdit(index);
     return;
   }
 
   // Abrir detalhe
-  const card = e.target.closest('.card');
-  if (card) openModal(recipes[card.dataset.index]);
+  openModal(recipes[index]);
 });
 
 render();
