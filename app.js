@@ -1,21 +1,41 @@
-const form = document.getElementById('recipe-form');
-const list = document.getElementById('recipe-list');
-const formTitle = document.getElementById('form-title');
-const submitBtn = document.getElementById('submit-btn');
-const cancelBtn = document.getElementById('cancel-btn');
-const searchInput = document.getElementById('search');
-const countLabel = document.getElementById('count');
-const chips = document.getElementById('chips');
-const categoryList = document.getElementById('category-list');
-const fab = document.getElementById('fab');
-const sheet = document.getElementById('form-sheet');
-const exportBtn = document.getElementById('export-btn');
-const importBtn = document.getElementById('import-btn');
-const importFile = document.getElementById('import-file');
+const UNCAT = '__none__';
+const PASTELS = ['#ffe58a', '#bcd8ff', '#ffd2a1', '#cfeab1', '#ffc9d4', '#d9ccff'];
 
-let recipes = JSON.parse(localStorage.getItem('recipes')) || [];
+const $ = (id) => document.getElementById(id);
+
+const screen = $('screen');
+const list = $('recipe-list');
+const tiles = $('tiles');
+const searchInput = $('search');
+const countLabel = $('count');
+const form = $('recipe-form');
+const formTitle = $('form-title');
+const submitBtn = $('submit-btn');
+const categoryList = $('category-list');
+const importFile = $('import-file');
+
+const sheets = {
+  form: $('form-sheet'),
+  detail: $('detail-sheet'),
+  more: $('more-sheet')
+};
+
+function loadRecipes() {
+  try {
+    const data = JSON.parse(localStorage.getItem('recipes'));
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+let recipes = loadRecipes();
 let editingIndex = null;
-let activeCategory = 'Todas';
+let currentIndex = null;
+let view = 'collections';
+let activeCategory = null;
+let fromTile = false;
+let sortMode = 'recent';
 
 function save() {
   localStorage.setItem('recipes', JSON.stringify(recipes));
@@ -27,67 +47,46 @@ function escapeHtml(text) {
   return div.innerHTML.replace(/"/g, '&quot;');
 }
 
-/* ---------- Janelas (abrir e fechar) ---------- */
+function pastel(text) {
+  let h = 0;
+  for (const c of text) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PASTELS[h % PASTELS.length];
+}
 
-const modal = document.createElement('div');
-modal.className = 'modal hidden';
-modal.innerHTML = '<div class="modal-content"><button class="modal-close" aria-label="Fechar">✕</button><div id="modal-body"></div></div>';
-document.body.appendChild(modal);
+/* ---------- Janelas ---------- */
 
-function updateScrollLock() {
-  const open = !sheet.classList.contains('hidden') || !modal.classList.contains('hidden');
+function lockScroll() {
+  const open = Object.values(sheets).some((s) => !s.classList.contains('hidden'));
   document.body.classList.toggle('no-scroll', open);
 }
 
-function openSheet() {
-  sheet.classList.remove('hidden');
-  updateScrollLock();
-  document.getElementById('name').focus();
+function openSheet(name) {
+  sheets[name].classList.remove('hidden');
+  lockScroll();
 }
 
-function closeSheet() {
-  sheet.classList.add('hidden');
-  updateScrollLock();
+function closeSheet(name) {
+  sheets[name].classList.add('hidden');
+  lockScroll();
 }
 
-function openModal(recipe) {
-  const body = document.getElementById('modal-body');
-  body.innerHTML = `
-    <div class="detail-media">
-      ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}" onerror="this.style.display='none'">` : ''}
-    </div>
-    <div class="detail-body">
-      ${recipe.category ? `<span class="tag">${escapeHtml(recipe.category)}</span>` : ''}
-      <h2>${escapeHtml(recipe.name)}</h2>
-      <h3>Ingredientes</h3>
-      <ul>${recipe.ingredients.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
-      <h3>Modo de preparo</h3>
-      <p class="steps">${escapeHtml(recipe.steps)}</p>
-    </div>
-  `;
-  modal.classList.remove('hidden');
-  updateScrollLock();
-}
-
-function closeModal() {
-  modal.classList.add('hidden');
-  updateScrollLock();
-}
-
-modal.addEventListener('click', (e) => {
-  if (e.target === modal || e.target.classList.contains('modal-close')) closeModal();
-});
-
-sheet.addEventListener('click', (e) => {
-  if (e.target === sheet) cancelForm();
+Object.entries(sheets).forEach(([name, el]) => {
+  el.addEventListener('click', (e) => {
+    if (e.target !== el) return;
+    if (name === 'form') cancelForm();
+    else closeSheet(name);
+  });
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    closeModal();
-    cancelForm();
-  }
+  if (e.key !== 'Escape') return;
+  cancelForm();
+  closeSheet('detail');
+  closeSheet('more');
 });
+
+$('detail-close').addEventListener('click', () => closeSheet('detail'));
+$('more-close').addEventListener('click', () => closeSheet('more'));
 
 /* ---------- Coleções ---------- */
 
@@ -106,33 +105,275 @@ function renderCategoryList() {
   });
 }
 
-function makeChip(label, value) {
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'chip' + (activeCategory === value ? ' active' : '');
-  btn.dataset.cat = value;
-  btn.textContent = label;
-  return btn;
+function cellHtml(r) {
+  if (!r) return '<div class="cell blank"></div>';
+  return `<div class="cell" style="background:${pastel(r.name)}"><span>🍽️</span>${
+    r.image ? `<img src="${escapeHtml(r.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''
+  }</div>`;
 }
 
-function renderChips() {
-  const cats = getCategories();
+function emptyHtml() {
+  return `
+    <div class="empty">
+      <span class="big">🍳</span>
+      <p>Nenhuma receita ainda.<br>Toque no + para cadastrar a primeira!</p>
+      <button type="button" class="btn btn-primary empty-add">+ Nova receita</button>
+    </div>
+  `;
+}
 
-  if (activeCategory !== 'Todas' && !cats.includes(activeCategory)) {
-    activeCategory = 'Todas';
+function renderCollections() {
+  tiles.innerHTML = '';
+
+  if (recipes.length === 0) {
+    tiles.innerHTML = emptyHtml();
+    return;
   }
 
-  chips.innerHTML = '';
-  if (cats.length === 0) return;
+  const cats = getCategories();
+  const groups = [{ key: null, label: 'Todas as receitas', items: recipes }];
 
-  chips.appendChild(makeChip('Todas', 'Todas'));
-  cats.forEach((cat) => chips.appendChild(makeChip(cat, cat)));
+  cats.forEach((cat) => {
+    groups.push({ key: cat, label: cat, items: recipes.filter((r) => r.category === cat) });
+  });
+
+  const uncat = recipes.filter((r) => !r.category);
+  if (cats.length && uncat.length) {
+    groups.push({ key: UNCAT, label: 'Sem coleção', items: uncat });
+  }
+
+  groups.forEach((g) => {
+    const latest = g.items.slice().reverse().slice(0, 4);
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'tile';
+    if (g.key === null) tile.dataset.all = '1';
+    else tile.dataset.key = g.key;
+    tile.innerHTML = `
+      <div class="mosaic">${[0, 1, 2, 3].map((i) => cellHtml(latest[i])).join('')}</div>
+      <div class="tile-name">${escapeHtml(g.label)}</div>
+      <div class="tile-count">${g.items.length === 1 ? '1 receita' : g.items.length + ' receitas'}</div>
+    `;
+    tiles.appendChild(tile);
+  });
 }
 
-chips.addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  activeCategory = chip.dataset.cat;
+/* ---------- Lista de receitas ---------- */
+
+function matchesSearch(recipe, term) {
+  if (!term) return true;
+  const text = (recipe.name + ' ' + recipe.ingredients.join(' ') + ' ' + (recipe.category || '')).toLowerCase();
+  return text.includes(term);
+}
+
+function matchesCategory(recipe) {
+  if (activeCategory === null) return true;
+  if (activeCategory === UNCAT) return !recipe.category;
+  return recipe.category === activeCategory;
+}
+
+function renderRecipes() {
+  list.innerHTML = '';
+
+  if (recipes.length === 0) {
+    countLabel.textContent = '';
+    list.innerHTML = emptyHtml();
+    return;
+  }
+
+  const term = searchInput.value.trim().toLowerCase();
+
+  const items = recipes
+    .map((recipe, index) => ({ recipe, index }))
+    .filter(({ recipe }) => matchesCategory(recipe) && matchesSearch(recipe, term));
+
+  if (sortMode === 'az') {
+    items.sort((a, b) => a.recipe.name.localeCompare(b.recipe.name, 'pt-BR'));
+  } else {
+    items.sort((a, b) => b.index - a.index);
+  }
+
+  countLabel.textContent = items.length === 1 ? '1 receita' : `${items.length} receitas`;
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty"><span class="big">🔎</span><p>Nenhuma receita encontrada.</p></div>';
+    return;
+  }
+
+  items.forEach(({ recipe, index }) => {
+    const card = document.createElement('article');
+    card.className = 'rcard';
+    card.dataset.index = index;
+    card.innerHTML = `
+      <div class="rimg" style="background:${pastel(recipe.name)}">
+        <span>🍽️</span>
+        ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}" loading="lazy" onerror="this.remove()">` : ''}
+      </div>
+      <h3>${escapeHtml(recipe.name)}</h3>
+      <p>${recipe.ingredients.length} ingredientes${recipe.category ? ' · ' + escapeHtml(recipe.category) : ''}</p>
+    `;
+    list.appendChild(card);
+  });
+}
+
+/* ---------- Tela principal ---------- */
+
+function renderAppbar() {
+  let title = 'Coleções';
+  if (view === 'recipes') {
+    if (activeCategory === null) title = 'Todas as receitas';
+    else if (activeCategory === UNCAT) title = 'Sem coleção';
+    else title = activeCategory;
+  }
+
+  $('screen-title').textContent = title;
+  $('back-btn').hidden = !(view === 'recipes' && fromTile);
+  $('sort-btn').hidden = view !== 'recipes';
+  $('sort-btn').textContent = sortMode === 'az' ? '⇅ A–Z' : '⇅ Recentes';
+}
+
+function render() {
+  // Se a coleção aberta deixou de existir, volta para "todas"
+  if (typeof activeCategory === 'string') {
+    const exists = activeCategory === UNCAT
+      ? recipes.some((r) => !r.category)
+      : getCategories().includes(activeCategory);
+    if (!exists) activeCategory = null;
+  }
+
+  renderAppbar();
+
+  document.querySelectorAll('.tab[data-tab]').forEach((t) => {
+    t.classList.toggle('active', t.dataset.tab === view);
+  });
+
+  $('view-collections').hidden = view !== 'collections';
+  $('view-recipes').hidden = view !== 'recipes';
+
+  renderCategoryList();
+
+  if (view === 'collections') renderCollections();
+  else renderRecipes();
+}
+
+screen.addEventListener('click', (e) => {
+  if (e.target.closest('.empty-add')) {
+    openNewForm();
+    return;
+  }
+
+  const tile = e.target.closest('.tile');
+  if (tile) {
+    activeCategory = tile.dataset.all ? null : tile.dataset.key;
+    view = 'recipes';
+    fromTile = true;
+    searchInput.value = '';
+    render();
+    window.scrollTo(0, 0);
+    return;
+  }
+
+  const card = e.target.closest('.rcard');
+  if (card) openDetail(Number(card.dataset.index));
+});
+
+$('back-btn').addEventListener('click', () => {
+  view = 'collections';
+  activeCategory = null;
+  fromTile = false;
+  searchInput.value = '';
+  render();
+  window.scrollTo(0, 0);
+});
+
+$('sort-btn').addEventListener('click', () => {
+  sortMode = sortMode === 'recent' ? 'az' : 'recent';
+  render();
+});
+
+searchInput.addEventListener('input', render);
+
+document.querySelector('.tabbar').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab[data-tab]');
+  if (!tab) return;
+  const target = tab.dataset.tab;
+
+  if (target === 'more') {
+    openSheet('more');
+    return;
+  }
+
+  view = target === 'collections' ? 'collections' : 'recipes';
+  activeCategory = null;
+  fromTile = false;
+  if (target !== 'search') searchInput.value = '';
+  render();
+  window.scrollTo(0, 0);
+
+  if (target === 'search') setTimeout(() => searchInput.focus(), 60);
+});
+
+/* ---------- Detalhe da receita ---------- */
+
+function setSegment(name) {
+  document.querySelectorAll('.seg-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.seg === name);
+  });
+  $('detail-ingredients').hidden = name !== 'ingredients';
+  $('detail-steps').hidden = name !== 'steps';
+}
+
+document.querySelectorAll('.seg-btn').forEach((b) => {
+  b.addEventListener('click', () => setSegment(b.dataset.seg));
+});
+
+function openDetail(index) {
+  const r = recipes[index];
+  if (!r) return;
+  currentIndex = index;
+
+  $('detail-media').style.background = pastel(r.name);
+
+  const img = $('detail-img');
+  if (r.image) {
+    img.hidden = false;
+    img.alt = r.name;
+    img.onerror = () => { img.hidden = true; };
+    img.src = r.image;
+  } else {
+    img.hidden = true;
+    img.removeAttribute('src');
+  }
+
+  const tag = $('detail-tag');
+  tag.textContent = r.category || '';
+  tag.hidden = !r.category;
+
+  $('detail-title').textContent = r.name;
+
+  $('detail-ingredients').innerHTML = r.ingredients
+    .map((i) => `<li><label><input type="checkbox"><span>${escapeHtml(i)}</span></label></li>`)
+    .join('');
+
+  const steps = r.steps.split('\n').map((s) => s.trim()).filter(Boolean);
+  $('detail-steps').innerHTML = steps.map((s) => `<li><span>${escapeHtml(s)}</span></li>`).join('');
+
+  setSegment('ingredients');
+  openSheet('detail');
+  sheets.detail.querySelector('.sheet-content').scrollTop = 0;
+}
+
+$('detail-edit').addEventListener('click', () => {
+  const index = currentIndex;
+  closeSheet('detail');
+  startEdit(index);
+});
+
+$('detail-delete').addEventListener('click', () => {
+  if (!confirm('Excluir essa receita?')) return;
+  recipes.splice(currentIndex, 1);
+  save();
+  closeSheet('detail');
   render();
 });
 
@@ -146,46 +387,48 @@ function resetForm() {
 }
 
 function cancelForm() {
-  if (sheet.classList.contains('hidden')) return;
+  if (sheets.form.classList.contains('hidden')) return;
   resetForm();
-  closeSheet();
+  closeSheet('form');
+}
+
+function openNewForm() {
+  resetForm();
+  if (view === 'recipes' && typeof activeCategory === 'string' && activeCategory !== UNCAT) {
+    $('category').value = activeCategory;
+  }
+  openSheet('form');
+  $('name').focus();
 }
 
 function startEdit(index) {
   const recipe = recipes[index];
+  if (!recipe) return;
   editingIndex = index;
 
-  document.getElementById('name').value = recipe.name;
-  document.getElementById('category').value = recipe.category || '';
-  document.getElementById('image').value = recipe.image || '';
-  document.getElementById('ingredients').value = recipe.ingredients.join('\n');
-  document.getElementById('steps').value = recipe.steps;
+  $('name').value = recipe.name;
+  $('category').value = recipe.category || '';
+  $('image').value = recipe.image || '';
+  $('ingredients').value = recipe.ingredients.join('\n');
+  $('steps').value = recipe.steps;
 
   formTitle.textContent = 'Editar receita';
   submitBtn.textContent = 'Salvar alterações';
-  openSheet();
+  openSheet('form');
 }
 
-fab.addEventListener('click', () => {
-  resetForm();
-  // Já abre com a coleção que está filtrada, pra agilizar
-  if (activeCategory !== 'Todas') {
-    document.getElementById('category').value = activeCategory;
-  }
-  openSheet();
-});
-
-cancelBtn.addEventListener('click', cancelForm);
+$('fab').addEventListener('click', openNewForm);
+$('cancel-btn').addEventListener('click', cancelForm);
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
 
   const recipe = {
-    name: document.getElementById('name').value.trim(),
-    category: document.getElementById('category').value.trim(),
-    image: document.getElementById('image').value.trim(),
-    ingredients: document.getElementById('ingredients').value.split('\n').map(i => i.trim()).filter(Boolean),
-    steps: document.getElementById('steps').value.trim()
+    name: $('name').value.trim(),
+    category: $('category').value.trim(),
+    image: $('image').value.trim(),
+    ingredients: $('ingredients').value.split('\n').map((i) => i.trim()).filter(Boolean),
+    steps: $('steps').value.trim()
   };
 
   if (editingIndex === null) {
@@ -195,24 +438,10 @@ form.addEventListener('submit', (e) => {
   }
 
   save();
-  render();
   resetForm();
-  closeSheet();
+  closeSheet('form');
+  render();
 });
-
-/* ---------- Busca ---------- */
-
-function matchesSearch(recipe, term) {
-  if (!term) return true;
-  const text = (recipe.name + ' ' + recipe.ingredients.join(' ') + ' ' + (recipe.category || '')).toLowerCase();
-  return text.includes(term);
-}
-
-function matchesCategory(recipe) {
-  return activeCategory === 'Todas' || recipe.category === activeCategory;
-}
-
-searchInput.addEventListener('input', render);
 
 /* ---------- Backup (exportar e importar) ---------- */
 
@@ -250,9 +479,8 @@ function cleanRecipe(r) {
   };
 }
 
-exportBtn.addEventListener('click', exportRecipes);
-
-importBtn.addEventListener('click', () => importFile.click());
+$('export-btn').addEventListener('click', exportRecipes);
+$('import-btn').addEventListener('click', () => importFile.click());
 
 importFile.addEventListener('change', () => {
   const file = importFile.files[0];
@@ -271,6 +499,7 @@ importFile.addEventListener('change', () => {
       if (confirm(`Importar ${valid.length} receita(s)? Elas serão adicionadas às que você já tem.`)) {
         recipes = recipes.concat(valid);
         save();
+        closeSheet('more');
         render();
       }
     } catch (err) {
@@ -281,91 +510,6 @@ importFile.addEventListener('change', () => {
   };
 
   reader.readAsText(file);
-});
-
-/* ---------- Lista de receitas ---------- */
-
-function render() {
-  renderChips();
-  renderCategoryList();
-  list.innerHTML = '';
-
-  if (recipes.length === 0) {
-    countLabel.textContent = '0 receitas';
-    list.innerHTML = `
-      <div class="empty">
-        <span class="big">🍳</span>
-        <p>Nenhuma receita ainda.<br>Que tal cadastrar a primeira?</p>
-        <button type="button" class="btn btn-primary empty-add">+ Nova receita</button>
-      </div>
-    `;
-    return;
-  }
-
-  const term = searchInput.value.trim().toLowerCase();
-  let shown = 0;
-
-  recipes.forEach((recipe, index) => {
-    if (!matchesSearch(recipe, term) || !matchesCategory(recipe)) return;
-    shown++;
-
-    const card = document.createElement('article');
-    card.className = 'card';
-    card.dataset.index = index;
-    card.innerHTML = `
-      <div class="card-media">
-        ${recipe.image ? `<img src="${escapeHtml(recipe.image)}" alt="${escapeHtml(recipe.name)}" loading="lazy" onerror="this.style.display='none'">` : ''}
-        <div class="card-actions">
-          <button class="icon-btn edit" aria-label="Editar">✏️</button>
-          <button class="icon-btn delete" aria-label="Excluir">🗑️</button>
-        </div>
-      </div>
-      <div class="card-body">
-        ${recipe.category ? `<span class="tag">${escapeHtml(recipe.category)}</span><br>` : ''}
-        <h3>${escapeHtml(recipe.name)}</h3>
-        <small>${recipe.ingredients.length} ingredientes</small>
-      </div>
-    `;
-    list.appendChild(card);
-  });
-
-  countLabel.textContent = shown === 1 ? '1 receita' : `${shown} receitas`;
-
-  if (shown === 0) {
-    list.innerHTML = '<div class="empty"><span class="big">🔎</span><p>Nenhuma receita encontrada.</p></div>';
-  }
-}
-
-list.addEventListener('click', (e) => {
-  // Botão de nova receita (estado vazio)
-  if (e.target.closest('.empty-add')) {
-    resetForm();
-    openSheet();
-    return;
-  }
-
-  const card = e.target.closest('.card');
-  if (!card) return;
-  const index = Number(card.dataset.index);
-
-  // Excluir
-  if (e.target.closest('.delete')) {
-    if (confirm('Excluir essa receita?')) {
-      recipes.splice(index, 1);
-      save();
-      render();
-    }
-    return;
-  }
-
-  // Editar
-  if (e.target.closest('.edit')) {
-    startEdit(index);
-    return;
-  }
-
-  // Abrir detalhe
-  openModal(recipes[index]);
 });
 
 render();
