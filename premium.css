@@ -275,3 +275,43 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     animation-duration: .01ms !important;
   }
 }
+
+/* Busca online independente */
+.online-search-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+}
+.online-search-form .search {
+  flex: 1;
+  min-width: 0;
+}
+.online-card {
+  padding-bottom: 16px;
+}
+.online-card .rimg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.online-details {
+  margin: 12px 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.online-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+}
+.online-details h4 {
+  margin: 12px 0 6px;
+}
+.online-details li {
+  margin-bottom: 5px;
+}
+.save-online {
+  margin-top: 10px;
+  width: 100%;
+}

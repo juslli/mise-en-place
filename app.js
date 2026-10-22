@@ -13,6 +13,14 @@ const formTitle = $('form-title');
 const submitBtn = $('submit-btn');
 const categoryList = $('category-list');
 const importFile = $('import-file');
+const onlineView = $('view-online');
+const onlineInput = $('online-search');
+const onlineForm = $('online-search-form');
+const onlineStatus = $('online-status');
+const onlineResults = $('online-results');
+
+let onlineMeals = [];
+let onlineRequest = 0;
 
 const sheets = {
   form: $('form-sheet'),
@@ -226,6 +234,7 @@ function renderAppbar() {
     else title = activeCategory;
   }
 
+  if (view === 'online') title = 'Buscar receitas';
   $('screen-title').textContent = title;
   $('back-btn').hidden = !(view === 'recipes' && fromTile);
   $('sort-btn').hidden = view !== 'recipes';
@@ -249,11 +258,12 @@ function render() {
 
   $('view-collections').hidden = view !== 'collections';
   $('view-recipes').hidden = view !== 'recipes';
+  onlineView.hidden = view !== 'online';
 
   renderCategoryList();
 
   if (view === 'collections') renderCollections();
-  else renderRecipes();
+  else if (view === 'recipes') renderRecipes();
 }
 
 screen.addEventListener('click', (e) => {
@@ -303,14 +313,15 @@ document.querySelector('.tabbar').addEventListener('click', (e) => {
     return;
   }
 
-  view = target === 'collections' ? 'collections' : 'recipes';
+  view = target === 'collections' ? 'collections'
+    : target === 'search' ? 'online' : 'recipes';
   activeCategory = null;
   fromTile = false;
-  if (target !== 'search') searchInput.value = '';
+  searchInput.value = '';
   render();
   window.scrollTo(0, 0);
 
-  if (target === 'search') setTimeout(() => searchInput.focus(), 60);
+  if (target === 'search') setTimeout(() => onlineInput.focus(), 60);
 });
 
 /* ---------- Detalhe da receita ---------- */
@@ -511,6 +522,151 @@ importFile.addEventListener('change', () => {
 
   reader.readAsText(file);
 });
+
+
+/* ---------- Busca online: separada das receitas salvas ---------- */
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function mealIngredients(meal) {
+  const items = [];
+  for (let i = 1; i <= 20; i++) {
+    const ingredient = meal['strIngredient' + i];
+    const measure = meal['strMeasure' + i];
+    if (ingredient && ingredient.trim()) {
+      items.push(((measure || '').trim() + ' ' + ingredient.trim()).trim());
+    }
+  }
+  return items;
+}
+
+function onlineCardHtml(meal) {
+  const ingredients = mealIngredients(meal);
+  const instructions = String(meal.strInstructions || '')
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  const title = escapeHtml(meal.strMeal || 'Receita');
+  const image = escapeHtml(meal.strMealThumb || '');
+  const id = escapeHtml(meal.idMeal || '');
+
+  return `
+    <article class="rcard online-card" data-meal-id="${id}">
+      <div class="rimg">
+        <span>🍽️</span>
+        ${image ? `<img src="${image}" alt="${title}" loading="lazy" onerror="this.remove()">` : ''}
+      </div>
+      <h3>${title}</h3>
+      <p>${ingredients.length} ingredientes${meal.strCategory ? ' · ' + escapeHtml(meal.strCategory) : ''}</p>
+      <details class="online-details">
+        <summary>Ver ingredientes e preparo</summary>
+        <h4>Ingredientes</h4>
+        <ul>${ingredients.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>
+        <h4>Modo de preparo</h4>
+        <ol>${instructions.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ol>
+      </details>
+      <button type="button" class="btn btn-primary save-online" data-meal-id="${id}">
+        Salvar na minha coleção
+      </button>
+    </article>`;
+}
+
+async function searchOnlineRecipes() {
+  const query = onlineInput.value.trim();
+  const requestId = ++onlineRequest;
+
+  onlineResults.innerHTML = '';
+  onlineMeals = [];
+
+  if (!query) {
+    onlineStatus.textContent = 'Digite o nome de uma receita para pesquisar.';
+    return;
+  }
+
+  onlineStatus.textContent = 'Buscando receitas online...';
+
+  try {
+    const url = 'https://www.themealdb.com/api/json/v1/1/search.php?s='
+      + encodeURIComponent(query);
+    const response = await fetch(url);
+
+    if (!response.ok) throw new Error('Falha na consulta');
+    const data = await response.json();
+
+    if (requestId !== onlineRequest) return;
+
+    const terms = normalizeText(query).split(/\s+/).filter(Boolean);
+    const meals = (data.meals || []).filter(meal => {
+      const searchable = normalizeText([
+        meal.strMeal,
+        ...mealIngredients(meal)
+      ].join(' '));
+      return terms.every(term => searchable.includes(term));
+    });
+
+    onlineMeals = meals;
+
+    if (!meals.length) {
+      onlineStatus.textContent =
+        'Nenhuma receita correspondente encontrada. Tente outro termo. A busca online pode ter poucas receitas em português.';
+      return;
+    }
+
+    onlineStatus.textContent =
+      meals.length === 1 ? '1 receita encontrada' : `${meals.length} receitas encontradas`;
+
+    onlineResults.innerHTML = meals.map(onlineCardHtml).join('');
+  } catch (error) {
+    if (requestId !== onlineRequest) return;
+    onlineStatus.textContent =
+      'Não foi possível acessar as receitas agora. Verifique sua conexão e tente novamente.';
+  }
+}
+
+onlineForm.addEventListener('submit', event => {
+  event.preventDefault();
+  searchOnlineRecipes();
+});
+
+onlineResults.addEventListener('click', event => {
+  const button = event.target.closest('.save-online');
+  if (!button) return;
+
+  const meal = onlineMeals.find(item => item.idMeal === button.dataset.mealId);
+  if (!meal) return;
+
+  const name = meal.strMeal || 'Receita online';
+  const exists = recipes.some(r => normalizeText(r.name) === normalizeText(name));
+
+  if (exists && !confirm('Você já tem uma receita com esse nome. Deseja salvar outra cópia?')) {
+    return;
+  }
+
+  const steps = String(meal.strInstructions || '')
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .join('\n');
+
+  recipes.push({
+    name,
+    category: meal.strCategory || 'Receitas online',
+    image: meal.strMealThumb || '',
+    ingredients: mealIngredients(meal),
+    steps
+  });
+
+  save();
+  button.textContent = 'Salva na coleção';
+  button.disabled = true;
+});
+
 
 render();
 
