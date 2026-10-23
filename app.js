@@ -454,6 +454,65 @@ form.addEventListener('submit', (e) => {
   render();
 });
 
+
+/* ---------- Importação assistida de receita ---------- */
+const reelPrepareButton = document.getElementById('reel-prepare');
+const reelTextInput = document.getElementById('reel-text');
+
+if (reelPrepareButton && reelTextInput) {
+  reelPrepareButton.addEventListener('click', () => {
+    const raw = reelTextInput.value.trim();
+    const status = document.getElementById('reel-status');
+
+    if (!raw) {
+      status.textContent = 'Cole primeiro a legenda ou transcrição do Reel.';
+      reelTextInput.focus();
+      return;
+    }
+
+    const lines = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const isIngredientHeader = line =>
+      /^(ingredientes|ingredients|o que vai|você vai precisar)\s*:?\s*$/i.test(line);
+    const isStepHeader = line =>
+      /^(modo de preparo|preparo|instruções|instrucoes|passo a passo|instructions)\s*:?\s*$/i.test(line);
+
+    const name = lines[0].replace(/^#\s*/, '');
+    const ingredients = [];
+    const steps = [];
+    let section = '';
+
+    for (const line of lines.slice(1)) {
+      if (isIngredientHeader(line)) {
+        section = 'ingredients';
+        continue;
+      }
+      if (isStepHeader(line)) {
+        section = 'steps';
+        continue;
+      }
+
+      const cleaned = line.replace(/^[-•*]\s*/, '').replace(/^\d+[\s.)-]+/, '');
+
+      if (section === 'ingredients') ingredients.push(cleaned);
+      if (section === 'steps') steps.push(cleaned);
+    }
+
+    if (!name || !ingredients.length || !steps.length) {
+      status.textContent =
+        'Organize o texto com o nome da receita, a seção Ingredientes e a seção Modo de preparo.';
+      return;
+    }
+
+    openNewForm();
+    document.getElementById('name').value = name;
+    document.getElementById('ingredients').value = ingredients.join('\n');
+    document.getElementById('steps').value = steps.join('\n');
+
+    status.textContent =
+      'Formulário preenchido. Confira a receita e clique em Salvar receita.';
+  });
+}
+
 /* ---------- Backup (exportar e importar) ---------- */
 
 function exportRecipes() {
