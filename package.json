@@ -1,0 +1,12 @@
+{
+  "name": "mise-en-place",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicativo de receitas Mise en Place",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

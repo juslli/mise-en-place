@@ -470,46 +470,104 @@ if (reelPrepareButton && reelTextInput) {
       return;
     }
 
-    const lines = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    const isIngredientHeader = line =>
-      /^(ingredientes|ingredients|o que vai|você vai precisar)\s*:?\s*$/i.test(line);
-    const isStepHeader = line =>
-      /^(modo de preparo|preparo|instruções|instrucoes|passo a passo|instructions)\s*:?\s*$/i.test(line);
+    const lines = raw
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
 
-    const name = lines[0].replace(/^#\s*/, '');
+    const normalize = text => text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .toLowerCase()
+      .trim();
+
+    const ingredientHeaders = [
+      'ingredientes', 'ingredients', 'voce vai precisar',
+      'o que vai', 'ingredientes para', 'para os ingredientes'
+    ];
+
+    const stepHeaders = [
+      'modo de preparo', 'modo de fazer', 'preparo',
+      'como fazer', 'passo a passo', 'instrucoes',
+      'instructions', 'preparation', 'directions'
+    ];
+
+    const isHeader = (line, headers) => {
+      const text = normalize(line);
+      return headers.some(header =>
+        text === header || text.startsWith(header + ' ')
+      );
+    };
+
+    const cleanLine = line => line
+      .replace(/^#+\s*/, '')
+      .replace(/^[-•*▪◦]\s*/, '')
+      .replace(/^\d+[\s.)-]+/, '')
+      .trim();
+
+    const ignoredLine = line => {
+      const text = normalize(line);
+      return !text ||
+        /^https?:/.test(text) ||
+        /^www\./.test(text) ||
+        /^@/.test(line.trim()) ||
+        /^(curta|compartilhe|salve|siga|me siga|link na bio)\b/.test(text);
+    };
+
+    let name = '';
+
+    for (const line of lines) {
+      const cleaned = cleanLine(line);
+
+      if (
+        !ignoredLine(cleaned) &&
+        !isHeader(cleaned, ingredientHeaders) &&
+        !isHeader(cleaned, stepHeaders)
+      ) {
+        name = cleaned;
+        break;
+      }
+    }
+
     const ingredients = [];
     const steps = [];
     let section = '';
 
-    for (const line of lines.slice(1)) {
-      if (isIngredientHeader(line)) {
+    for (const originalLine of lines) {
+      const line = cleanLine(originalLine);
+      if (!line) continue;
+
+      if (isHeader(line, ingredientHeaders)) {
         section = 'ingredients';
         continue;
       }
-      if (isStepHeader(line)) {
+
+      if (isHeader(line, stepHeaders)) {
         section = 'steps';
         continue;
       }
 
-      const cleaned = line.replace(/^[-•*]\s*/, '').replace(/^\d+[\s.)-]+/, '');
+      if (ignoredLine(line) || line === name) continue;
 
-      if (section === 'ingredients') ingredients.push(cleaned);
-      if (section === 'steps') steps.push(cleaned);
+      if (section === 'ingredients') ingredients.push(line);
+      if (section === 'steps') steps.push(line);
     }
 
     if (!name || !ingredients.length || !steps.length) {
       status.textContent =
-        'Organize o texto com o nome da receita, a seção Ingredientes e a seção Modo de preparo.';
+        'Não consegui separar tudo. Use o nome da receita, uma seção Ingredientes e outra Modo de preparo, cada uma em uma linha.';
       return;
     }
 
     openNewForm();
+
     document.getElementById('name').value = name;
     document.getElementById('ingredients').value = ingredients.join('\n');
     document.getElementById('steps').value = steps.join('\n');
 
     status.textContent =
-      'Formulário preenchido. Confira a receita e clique em Salvar receita.';
+      'Receita organizada! Confira os dados e clique em Salvar receita.';
   });
 }
 
