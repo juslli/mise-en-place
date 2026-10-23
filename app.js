@@ -579,31 +579,50 @@ function exportRecipes() {
     return;
   }
 
-  const blob = new Blob([JSON.stringify(recipes, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'receitas-backup.json';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  try {
+    const blob = new Blob(
+      [JSON.stringify(recipes, null, 2)],
+      { type: 'application/json;charset=utf-8' }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'receitas-backup.json';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    // Dá tempo ao navegador para iniciar o download.
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    console.error('Erro ao exportar receitas:', error);
+    alert('Não foi possível exportar suas receitas. Tente novamente.');
+  }
 }
 
 function isValidRecipe(r) {
-  return r
-    && typeof r.name === 'string'
-    && Array.isArray(r.ingredients)
-    && typeof r.steps === 'string';
+  return Boolean(
+    r &&
+    typeof r.name === 'string' &&
+    r.name.trim().length > 0 &&
+    Array.isArray(r.ingredients) &&
+    r.ingredients.some(i => typeof i === 'string' && i.trim().length > 0) &&
+    typeof r.steps === 'string' &&
+    r.steps.trim().length > 0
+  );
 }
 
 function cleanRecipe(r) {
   return {
-    name: r.name,
-    category: typeof r.category === 'string' ? r.category : '',
-    image: typeof r.image === 'string' ? r.image : '',
-    ingredients: r.ingredients.map(String),
-    steps: r.steps
+    name: r.name.trim(),
+    category: typeof r.category === 'string' ? r.category.trim() : '',
+    image: typeof r.image === 'string' ? r.image.trim() : '',
+    ingredients: r.ingredients
+      .filter(i => typeof i === 'string' && i.trim())
+      .map(i => i.trim()),
+    steps: r.steps.trim()
   };
 }
 
