@@ -580,52 +580,98 @@ function onlineCardHtml(meal) {
 async function searchOnlineRecipes() {
   const query = onlineInput.value.trim();
   const requestId = ++onlineRequest;
-
   onlineResults.innerHTML = '';
   onlineMeals = [];
 
   if (!query) {
-    onlineStatus.textContent = 'Digite o nome de uma receita para pesquisar.';
+    onlineStatus.textContent = 'Digite o nome de uma receita ou ingrediente.';
     return;
   }
 
   onlineStatus.textContent = 'Buscando receitas online...';
 
   try {
-    const url = 'https://www.themealdb.com/api/json/v1/1/search.php?s='
-      + encodeURIComponent(query);
-    const response = await fetch(url);
+    const translations = {
+      frango: 'chicken', galinha: 'chicken',
+      carne: 'beef', porco: 'pork', peixe: 'fish',
+      salmao: 'salmon', camarao: 'shrimp',
+      arroz: 'rice', macarrao: 'pasta', massa: 'pasta',
+      pao: 'bread', ovo: 'egg', ovos: 'eggs',
+      batata: 'potato', tomate: 'tomato', queijo: 'cheese',
+      cogumelo: 'mushroom', cebola: 'onion', alho: 'garlic',
+      cenoura: 'carrot', milho: 'corn', feijao: 'beans',
+      salada: 'salad', sopa: 'soup', bolo: 'cake',
+      atum: 'tuna', peru: 'turkey'
+    };
 
-    if (!response.ok) throw new Error('Falha na consulta');
-    const data = await response.json();
+    const normalized = normalizeText(query);
+    const terms = normalized.split(/\s+/);
+    const translated = terms.map(term => translations[term] || term);
+    const candidates = [...new Set([query, translated.join(' ')])];
+    let meals = [];
+
+    // Pesquisa pelo nome.
+    for (const candidate of candidates) {
+      const response = await fetch(
+        'https://www.themealdb.com/api/json/v1/1/search.php?s=' +
+        encodeURIComponent(candidate)
+      );
+      if (!response.ok) throw new Error('Falha na busca por nome');
+
+      const data = await response.json();
+      if (data.meals && data.meals.length) {
+        meals = data.meals;
+        break;
+      }
+    }
+
+    // Se não encontrar pelo nome, pesquisa pelo ingrediente principal.
+    if (!meals.length) {
+      const ignored = ['com', 'de', 'da', 'do', 'e', 'with', 'and'];
+      const ingredient = translated.find(term => !ignored.includes(term));
+
+      if (ingredient) {
+        const response = await fetch(
+          'https://www.themealdb.com/api/json/v1/1/filter.php?i=' +
+          encodeURIComponent(ingredient)
+        );
+        if (!response.ok) throw new Error('Falha na busca por ingrediente');
+
+        const data = await response.json();
+        const matches = (data.meals || []).slice(0, 8);
+
+        meals = (await Promise.all(matches.map(async meal => {
+          const detail = await fetch(
+            'https://www.themealdb.com/api/json/v1/1/lookup.php?i=' +
+            encodeURIComponent(meal.idMeal)
+          );
+          if (!detail.ok) return null;
+          const result = await detail.json();
+          return result.meals?.[0] || null;
+        }))).filter(Boolean);
+      }
+    }
 
     if (requestId !== onlineRequest) return;
-
-    const terms = normalizeText(query).split(/\s+/).filter(Boolean);
-    const meals = (data.meals || []).filter(meal => {
-      const searchable = normalizeText([
-        meal.strMeal,
-        ...mealIngredients(meal)
-      ].join(' '));
-      return terms.every(term => searchable.includes(term));
-    });
 
     onlineMeals = meals;
 
     if (!meals.length) {
       onlineStatus.textContent =
-        'Nenhuma receita correspondente encontrada. Tente outro termo. A busca online pode ter poucas receitas em português.';
+        'Nenhuma receita encontrada. Tente outro nome ou ingrediente.';
       return;
     }
 
-    onlineStatus.textContent =
-      meals.length === 1 ? '1 receita encontrada' : `${meals.length} receitas encontradas`;
+    onlineStatus.textContent = meals.length === 1
+      ? '1 receita encontrada'
+      : `${meals.length} receitas encontradas`;
 
     onlineResults.innerHTML = meals.map(onlineCardHtml).join('');
   } catch (error) {
     if (requestId !== onlineRequest) return;
     onlineStatus.textContent =
-      'Não foi possível acessar as receitas agora. Verifique sua conexão e tente novamente.';
+      'Não foi possível consultar as receitas. Verifique a conexão e tente novamente.';
+    console.error('Erro na busca online:', error);
   }
 }
 
